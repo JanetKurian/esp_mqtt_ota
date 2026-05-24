@@ -1,0 +1,4 @@
+{
+  "version": "1.0",
+  "firmware": "https://raw.githubusercontent.com/USERNAME/ESP8266_OTA/main/firmware.bin"
+}
