@@ -1,4 +1,4 @@
 {
   "version": "1.2",
-  "firmware": "https://raw.githubusercontent.com/JanetKurian/esp_mqtt_ota/main/firmware.bin"
+  "firmware": "http://10.20.74.194:8000/firmware.bin"
 }
