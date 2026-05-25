@@ -1,4 +1,4 @@
 {
   "version": "1.2",
-  "firmware": "http://10.225.113.220:8000/firmware.bin"
+  "firmware": "http://10.225.113.129:8000/firmware.bin"
 }
