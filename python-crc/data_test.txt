@@ -1,0 +1,534 @@
+this is demo data
+version 1
+SYNEDYNE SYSTEMS 
+
+
+	
+EG800 MQTT Communication Software
+Design Document
+Doc No : ________
+
+Version: 1.0.0, Pages: 22	             	     27-June-26
+
+
+
+                                       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Copyright Notice:
+
+This document contains proprietary information of Synedyne Systems Pvt. Ltd. No part of this document may be reproduced, stored, copied, or transmitted in any form or by means of electronic, mechanical, photocopying or otherwise, without the prior consent of Synedyne Systems Pvt. Ltd.
+
+Copyright © Synedyne Systems 2026 All Rights Reserved-Not for circulation without prior consent
+
+
+TABLE OF CONTENTS
+1. INTRODUCTION	5
+1.1 Purpose	5
+1.2 Scope	5
+1.3 Overview	5
+1.4 References	5
+1.5 Definitions and Acronyms	6
+2. System Overview	6
+2.1 Hardware Overview	6
+2.2 System Block Diagram	7
+2.3 Software Architecture Overview	7
+2.4 Software Layer Diagram	7
+3. Software Flow of Firmware	8
+4. Detailed Layer Description	9
+4.1 Application Layer	9
+4.1.1 Application Layer Architecture	9
+4.1.2 Module Descriptions	9
+4.1.3 Application Layer Execution Flow	16
+4.2 Middleware Layer	17
+4.2.1 Middleware Layer Architecture	17
+4.2.2 Middleware Layer Execution Flow	17
+4.3 Hardware Abstraction Layer	18
+4.3.1 UART Configuration	18
+4.3.2 UART HAL Functions	18
+4.3. 3 Hardware Abstraction Layer Architecture	18
+4.3.4 Hardware Abstraction Layer Execution Flow	19
+5. Task Description	20
+5.1 Cellular Task	20
+6. Firmware State Machine	21
+7. MQTT Packet Overview	21
+8. Memory Usage Overview	22
+
+		
+
+
+
+
+
+
+
+LIST OF TABLES
+ 
+Table 1: Definitions and Acronyms............................................................................................................................6
+Table 2: Cellular Application Functions....................................................................................................................10
+Table 3: MQTT Application Functions......................................................................................................................11
+Table 4: MQTT Subscription Topics.........................................................................................................................12
+Table 5: MQTT Publish Logic Functions..................................................................................................................13
+Table 6: MQTT Packet Processing Functions...........................................................................................................15
+Table 7: UART Configuration...................................................................................................................................18
+Table 8: UART HAL Functions................................................................................................................................18
+Table 9: Cellular Task Configuration........................................................................................................................20
+Table 10: Firmware State Machine States.................................................................................................................20
+Table 11: MQTT Packets Overview..........................................................................................................................22
+Table 12: Memory Usage Overview..........................................................................................................................22
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+LIST OF FIGURES
+
+Figure 1: System Block Diagram................................................................................................................................7
+Figure 2: Software Layer Diagram..............................................................................................................................7
+Figure 3: Software Flow Diagram…………...............................................................................................................8
+Figure 4: Application Layer Architecture...................................................................................................................9
+Figure 5: Cellular Application Flow..........................................................................................................................11
+Figure 6: MQTT Application Flow............................................................................................................................12
+Figure 7: MQTT Publish Logic & Application Data Handling Flow........................................................................14
+Figure 8: MQTT Packet Processing Flow..................................................................................................................15
+Figure 9: Application Layer Execution Flow.............................................................................................................16
+Figure 10: Middleware Layer Architecture................................................................................................................17
+Figure 11: Middleware Layer Execution Flow..........................................................................................................17
+Figure 12: Hardware Abstraction Layer Architecture...............................................................................................18
+Figure 13: Hardware Abstraction Layer Execution Flow..........................................................................................19
+Figure 14: Firmware State Machine..........................................................................................................................21
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Change Record
+
+Date	Pages	Version No	Details of Revision	Prepared By	Approved & Released By
+27-06-2026	22	1.00	Initial Release	Harisha	
+
+
+
+
+1. INTRODUCTION
+1.1 Purpose
+This document describes the software design of the STM32F303RE-based LTE MQTT Communication Firmware using the EG800EU LTE Cellular Module. It presents the layered software architecture, module responsibilities, task design, and execution flow that enable cellular network connectivity and MQTT-based publish and subscribe communication.
+1.2 Scope
+This document covers the software architecture of the STM32F303RE LTE MQTT Communication Firmware, including the Application, Middleware, and Hardware Abstraction (HAL) layers. It describes the cellular communication over UART, MQTT session management, application packet publishing and processing, FreeRTOS task organization, software execution flow, startup sequence, and the interaction between the firmware modules.
+1.3 Overview
+The firmware enables cellular communication between the STM32F303RE microcontroller and an MQTT broker using the EG800EU LTE Cellular Module. It establishes cellular network connectivity, creates and maintains an MQTT client session, publishes application data, subscribes to MQTT topics, and processes incoming MQTT messages. The firmware is implemented using a layered software architecture with FreeRTOS for task management and STM32 HAL for hardware abstraction.
+
+1.4 References
+The software design described in this document is based on the STM32F303RE microcontroller, the EG800EU LTE Cellular Module, STM32 HAL libraries, FreeRTOS, and the MQTT communication protocol. The firmware implementation follows the corresponding hardware reference manuals, software libraries, and AT command ajax
+
+
+
+
+
+
+
+
+
+
+
+
+Term	Description
+AT Command	Standard command set used to control and configure the cellular module over the UART interface.
+MQTT	Message Queuing Telemetry Transport protocol used for lightweight publish and subscribe communication.
+QMTOPEN / QMTCONN	EG800EU AT commands used to open an MQTT network connection and establish an MQTT client session.
+QMTSUB / QMTPUBEX	EG800EU AT commands used to subscribe to MQTT topics and publish application data.
+QMTRECV	Unsolicited Result Code (URC) generated by the EG800EU module to indicate the reception of an MQTT message.
+IMEI	International Mobile Equipment Identity used to uniquely identify the cellular device.
+UART	Universal Asynchronous Receiver-Transmitter interface used for communication between the STM32F303RE and the EG800EU module.
+LTE	Long-Term Evolution cellular communication technology used by the EG800EU module.
+PDP	Packet Data Protocol context required to establish cellular data communication.
+QoS	Quality of Service level that determines the reliability of MQTT message delivery.
+Broker	MQTT server responsible for receiving, filtering, and forwarding MQTT messages between clients.
+HAL	Hardware Abstraction Layer provided by STM32Cube for accessing microcontroller peripherals.
+RTOS	Real-Time Operating System used for task scheduling and resource management.
+ISR	Interrupt Service Routine executed in response to a hardware interrupt.
+JSON	JavaScript Object Notation used as the data format for MQTT payloads.
+1.5 Definitions and Acronyms
+
+Table 1: Definitions and Acronyms
+
+2. System Overview
+The STM32F303RE LTE MQTT Communication Firmware provides a reliable communication interface between the embedded system and a remote MQTT broker using the EG800EU LTE Cellular Module. The firmware communicates with the cellular module over a UART interface using AT commands to establish cellular network connectivity and create an MQTT client session. Once connected, it supports bidirectional MQTT communication by publishing application data and processing subscribed messages received from the broker. The software is organized into Application, Middleware, and Hardware Abstraction (HAL) layers to provide a modular, maintainable, and scalable firmware architecture.
+
+2.1 Hardware Overview
+The firmware is designed to run on the following hardware platform:
+•	STM32F303RE microcontroller
+•	EG800EU LTE Cellular Module
+•	UART interface between the STM32F303RE and the EG800EU module
+
+
+
+
+2.2 System Block Diagram
+The system consists of the STM32F303RE microcontroller interfaced with the EG800EU LTE Cellular Module through a UART communication interface, as shown in the block diagram. The STM32 communicates with the cellular module using AT commands over UART to control network operations and establish LTE connectivity. The EG800EU module then connects to the MQTT broker over the cellular network. This setup enables bidirectional communication by transmitting application data to the broker and receiving subscribed MQTT messages for processing.
+
+
+ 
+
+Figure 1: System Block Diagram
+
+2.3 Software Architecture Overview
+The firmware follows a three-layer software architecture consisting of the Application Layer, Middleware Layer, and Hardware Abstraction Layer (HAL). This layered approach separates application functionality, communication services, and hardware-dependent drivers, resulting in a modular, maintainable, and scalable firmware design.
+The Application Layer implements the firmware logic responsible for cellular initialization, MQTT communication, application data handling, and packet processing. The Middleware Layer provides common software services, including FreeRTOS task management, AT command processing, UART response parsing, software timers, and firmware state management. The Hardware Abstraction Layer (HAL) provides the UART driver interface used for communication between the STM32F303RE microcontroller and the EG800EU LTE Cellular Module.
+
+2.4 Software Layer Diagram
+ 
+
+Figure 2: Software Layer Diagram
+3. Software Flow of Firmware
+ 
+
+Figure 3: Software Flow Diagram
+4. Detailed Layer Description
+4.1 Application Layer
+The Application Layer contains the main firmware logic for cellular and MQTT communication. It is responsible for initializing the EG800EU cellular module, establishing the MQTT connection, publishing application data, subscribing to MQTT topics, and processing received MQTT messages. This layer uses the services provided by the Middleware Layer to perform all communication with the EG800EU cellular module.
+
+
+4.1.1 Application Layer Architecture
+The Application Layer is organized into individual modules, where each module is responsible for a specific part of the cellular and MQTT communication process. Together, these modules initialize the cellular module, establish the MQTT connection, publish application data, receive subscribed MQTT messages, and process the received MQTT data.
+
+ 
+
+Figure 4: Application Layer Architecture 
+
+The Application Layer consists of the following modules:
+•	Cellular Application
+•	MQTT Application
+•	Publish Logic & Application Data Handling
+•	MQTT Packet Processing
+
+4.1.2 Module Descriptions
+
+Cellular Application
+The Cellular Application is responsible for initializing the EG800EU cellular module and preparing it for MQTT communication. It sends the required AT commands to verify the SIM status, network registration, and data connectivity. Once all the checks are completed successfully, the firmware proceeds to establish the MQTT connection.
+
+
+
+
+
+Function Name	Scope	Return Type	Parameters	Description	Used By
+EG800_SendCommand()	Global	void	const char *command	Sends an AT command to the EG800EU cellular module through the UART interface.	Cellular Application
+EG800_SendData()	Global	void	const char *data	Transmits raw data to the EG800EU module during MQTT publish operations.	Publish Logic
+EG800_SendCtrlZ()	Global	void	void	Sends the Ctrl+Z character to indicate the end of an MQTT publish payload.	Publish Logic
+EG800_WaitForResponse()	Global	bool	const char *expectedResponse, uint32_t timeout	Waits for the expected response from the cellular module within the specified timeout period.	Cellular Application
+CheckCellularReady()	Global	CellularStatus_t	void	Verifies SIM readiness, network registration, and cellular data connectivity before MQTT initialization.	Cellular Application
+
+Table 2: Cellular Application Functions
+
+ 
+ 
+Figure 5: Cellular Application Flow Diagram
+
+
+
+MQTT Application
+The MQTT Application is responsible for establishing and maintaining the MQTT connection with the broker. It opens the broker connection, creates the MQTT client session, subscribes to the required MQTT topics, and manages the publishing of application data during normal operation.
+
+Function Name	Scope	Return Type	Parameters	Description	Used By
+MQTT_Init()	Global	MQTTStatus_t	void	Initializes the MQTT client and establishes a connection with the configured MQTT broker.	Cellular Application
+MQTT_DeInit()	Global	MQTTStatus_t	void	Disconnects the MQTT client and closes the broker connection.	Cellular Application
+MQTT_Subscribe()	Global	MQTTStatus_t	void	Subscribes to the configured MQTT topics.	MQTT Application
+MQTT_Publish()	Global	MQTTStatus_t	void	Publishes the selected application packet to the configured MQTT topic.	Publish Logic & Application Data Handling
+
+Table 3:  MQTT Application Functions 
+
+ 
+
+
+Figure 6: MQTT Application Flow Diagram
+
+MQTT Subscription Topics
+The firmware subscribes to the required MQTT topics after successfully establishing the MQTT connection. These topics are used to receive acknowledgements and commands from the MQTT broker.
+
+Topic	Purpose	Processed By
+Metadata Sync Acknowledgement	Receives acknowledgement for the metadata synchronization packet.	MQTT Packet Processing
+Firmware Update Acknowledgement	Receives acknowledgement for firmware update requests.	MQTT Packet Processing
+
+Table 4: MQTT Subscription Topics
+
+
+MQTT Publish Logic & Application Data Handling
+The Publish Logic & Application Data Handling module is responsible for preparing application data for MQTT communication. It collects the required information, creates the JSON payload, and publishes it to the configured MQTT topic through the MQTT Application. Based on the application requirement, the data is published either during initialization or at regular intervals.
+
+
+
+Function Name	Scope	Return Type	Parameters	Description	Used By
+PublishMetadataSyncPacket()	Global	MQTTStatus_t	void	Creates and publishes the metadata synchronization packet.	MQTT Application
+PublishPeriodicPacket()	Global	MQTTStatus_t	void	Creates and publishes the periodic telemetry packet.	MQTT Application
+PublishErrorPacket()	Global	MQTTStatus_t	void	Creates and publishes the error information packet.	MQTT Application
+PublishDiagnosticPacket()	Global	MQTTStatus_t	void	Creates and publishes the diagnostic information packet.	MQTT Application
+PublishFOTAUpdateRequestPacket()	Global	MQTTStatus_t	void	Creates and publishes the firmware update request packet.	MQTT Application
+PublishAlarmPacket()	Global	MQTTStatus_t	void	Creates and publishes the alarm information packet.	MQTT Application
+PublishBatchCalibrationPacket()	Global	MQTTStatus_t	void	Creates and publishes the batch calibration packet.	MQTT Application
+PublishBatchDiagnosticsPacket()	Global	MQTTStatus_t	void	Creates and publishes the batch diagnostics packet.	MQTT Application
+
+
+Table 5: MQTT Publish Functions 
+
+
+
+
+
+
+
+ 
+
+Figure 7: MQTT Publish Flow  Diagram
+
+MQTT Packet Processing
+The MQTT Packet Processing module is responsible for processing the messages received from the MQTT broker. It identifies the received message, extracts the required information from the JSON payload, and updates the corresponding application data. The processed information is then made available to the firmware for further action.
+
+Function Name	Scope	Return Type	Parameters	Description	Used By
+MQTT_ProcessReceivedPacket()	Global	void	void	Identifies the received MQTT message and calls the appropriate processing function.	Cellular Task
+ProcessMetadataSyncAck()	Internal	void	const char *payload (or actual parameter)	Processes the Metadata Synchronization acknowledgement received from the MQTT broker.	MQTT_ProcessReceivedPacket()
+ProcessFOTAUpdateAck()	Internal	void	const char *payload (or actual parameter)	Processes the Firmware Update acknowledgement received from the MQTT broker.	MQTT_ProcessReceivedPacket()
+
+Table 6: MQTT Packet Processing Functions 
+
+
+ 
+
+
+Figure 8: MQTT Packet Processing Flow  
+
+
+
+
+
+
+
+
+
+4.1.3 Application Layer Execution Flow
+
+ 
+
+Figure 9: Application Layer Execution Flow
+
+
+4.2 Middleware Layer
+The Middleware Layer provides the services required for communication between the Application Layer and the EG800EU cellular module. It handles FreeRTOS task execution, AT command processing, UART response parsing, software timers, and firmware state management. These services support the Application Layer in establishing cellular communication and managing MQTT operations.
+
+4.2.1 Middleware Layer Architecture
+
+ 
+Figure 10: Middleware Layer Architecture  
+
+4.2.2 Middleware Layer Execution Flow
+
+
+ 
+
+Figure 11: Middleware Layer Execution Flow
+
+4.3 Hardware Abstraction Layer
+The Hardware Abstraction Layer (HAL) provides the interface between the firmware and the STM32F303RE hardware peripherals. In the current implementation, the UART peripheral is used to communicate with the EG800EU LTE Cellular Module. The HAL driver manages UART initialization, data transmission, data reception, and interrupt handling required for cellular communication.
+
+4.3.1 UART Configuration
+Parameter	Value / Description
+Peripheral	USART1
+Communication Mode	Asynchronous
+Baud Rate	115200 bps
+Data Bits	8 Bits
+Parity	None
+Stop Bits	1
+Flow Control	None
+Operating Mode	Transmit / Receive
+Receive Method	Interrupt Mode (HAL_UART_Receive_IT)
+HAL Driver	STM32 HAL UART Driver
+
+Table 7:  UART Configuration
+
+
+4.3.2 UART HAL Functions
+Function Name	Purpose
+HAL_UART_Init()	Initializes the UART peripheral.
+HAL_UART_Transmit()	Sends AT commands and data to the EG800EU module.
+HAL_UART_Receive_IT()	Starts interrupt-based UART reception.
+HAL_UART_RxCpltCallback()	Handles received UART data and restarts reception.
+
+Table 8:  UART HAL Functions 
+
+4.3. 3 Hardware Abstraction Layer Architecture
+
+ 
+
+Figure 12: Hardware Abstraction Layer Architecture
+
+4.3.4 Hardware Abstraction Layer Execution Flow
+ 
+
+Figure 13: Hardware Abstraction Layer Execution Flow
+
+
+
+
+
+
+
+
+
+
+
+
+
+5. Task Description
+5.1 Cellular Task
+The Cellular Task is the main FreeRTOS task in the firmware. It runs continuously after the system initialization is completed and handles the MQTT communication during normal operation. The task processes received MQTT messages, executes scheduled data publishing, and monitors the communication status throughout the system operation.
+
+Task Information
+Task Name	Priority	TASK DELAY	Stack Size	Execution Mode	Description
+StartCellularTask	Normal	10 (ms)	720 Words	Continuous	Processes received MQTT messages, executes scheduled publishing, and manages MQTT communication during runtime.
+
+Table 9:  Cellular Task Configuration
+
+6. Firmware State Machine
+The firmware follows a state-based execution model to control the initialization sequence and normal runtime operation. Each state represents a specific stage of the firmware, and the system transitions to the next state only after the current operation completes successfully. This approach simplifies firmware execution, improves readability, and provides a structured method for handling communication and error conditions.
+
+
+State	Description	Next State
+APP_STATE_INIT	Initializes the STM32 peripherals and FreeRTOS kernel.	APP_STATE_CHECK_CELLULAR
+APP_STATE_CHECK_CELLULAR	Verifies SIM status, network registration, and packet data connectivity.	APP_STATE_MQTT_DEINIT
+APP_STATE_MQTT_DEINIT	Bring the Module to the Know State(Initial state)	APP_STATE_MQTT_INIT
+APP_STATE_MQTT_INIT	Establishes the MQTT connection with the broker.	APP_STATE_MQTT_SUBSCRIBE
+APP_STATE_MQTT_SUBSCRIBE	Subscribes to the required MQTT topics.	APP_STATE_RUNNING
+APP_STATE_RUNNING	Publishes application data and processes received MQTT packets.	APP_STATE_RUNNING
+APP_STATE_ERROR	Entered when initialization fails.	APP_STATE_INIT
+
+Table 10:  Firmware State Machine States
+
+
+
+ 
+
+
+Figure 14: Firmware state machine Flow  Diagram
+
+7. MQTT Packet Overview
+The firmware exchanges multiple MQTT packets with the broker to transmit device information, telemetry, diagnostic data, alarms, and firmware update requests. Each packet serves a specific purpose and is transmitted either periodically or when triggered by an application event.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Packet Summary
+Packet Name	Direction	Purpose	Trigger Type	Transmission Interval
+Metadata Synchronization	Publish	Sends device information and firmware details.	One-Time	During initialization
+Metadata Synchronization Acknowledgement	
+Subscribe
+Receives acknowledgement for the Metadata Synchronization packet.	One-Time	Received upon broker response.
+Periodic Telemetry	Publish	Sends periodic device telemetry.	Periodic	Every 1 minute
+Error Packet	Publish	Reports firmware or communication errors.	Periodic	Every 1 minute
+Diagnostic Packet	Publish	Sends diagnostic information.	Periodic	Every 1 minute
+Firmware Update Request	Publish	Requests firmware update information from the broker.	One-Time	During initialization
+Firmware Update Acknowledgement	Subscribe
+Receives firmware update acknowledgement from the broker	One-Time	Received upon broker response.
+Alarm Packet	Publish	Sends alarm and warning information.	Periodic	Every 1 minute 
+Batch Calibration Packet	Publish	Sends calibration data.	Event Based	Event-based
+Batch Diagnostics Packet	Publish	Sends batch diagnostic information.	Event Based	Event-based 
+Batch Data Packet	Publish	Sends batch data information.	Event Based	Event-based 
+
+Table 11:  MQTT Packets Overview
+8. Memory Usage Overview
+The firmware uses static memory allocation for communication buffers, application data structures, and the FreeRTOS task stack to ensure predictable memory usage during runtime. Communication buffers are allocated at compile time and reused throughout execution, reducing memory fragmentation and improving system reliability. Dynamic memory allocation is limited to JSON object creation and parsing during MQTT packet construction and processing.
+
+Resource	Size	Purpose
+UART receive buffer	512 bytes	Shared buffer for all modem responses and incoming MQTT notifications
+Command formatting buffer	1024 bytes	Used to format outgoing AT commands
+Publish command buffer	512 bytes	Used to format outgoing publish command strings
+JSON payload buffer	1024 bytes	Holds the serialized JSON payload prior to transmission
+Application packet structures	Variable	Hold the data fields for each application packet type prior to publishing
+Application task stack	720 words	Stack allocated to the single FreeRTOS application task
+Table 12:  Memory Usage Overview
+
+.1
